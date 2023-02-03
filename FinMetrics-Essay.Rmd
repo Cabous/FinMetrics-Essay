@@ -3,7 +3,7 @@
 # Remove comments and add values where applicable.
 # The descriptions below should be self-explanatory
 
-title: "Helping You Write Academic Papers in R using Texevier"
+title: "Dynamic Portfolio Optimization Across Asset Classes using Multi-variate Volatility Modelling"
 #subtitle: "This will appear as Right Header"
 
 documentclass: "elsarticle"
@@ -25,23 +25,14 @@ Thesis_FP: FALSE
 # --------- Front Page
 # Comment: ----- Follow this pattern for up to 5 authors
 AddTitle: TRUE # Use FALSE when submitting to peer reviewed platform. This will remove author names.
-Author1: "Nico Katzke^[__Contributions:__  \\newline _The authors would like to thank no institution for money donated to this project. Thank you sincerely._]"  # First Author - note the thanks message displayed as an italic footnote of first page.
-Ref1: "Prescient Securities, Cape Town, South Africa" # First Author's Affiliation
-Email1: "nfkatzke\\@gmail.com" # First Author's Email address
+Author1: "Carel Olivier"  # First Author - note the thanks message displayed as an italic footnote of first page.
+Ref1: "22017542" # First Author's Affiliation
+Email1: "22017542\\@sun.ac.za" # First Author's Email address
 
-Author2: "John Smith"
-Ref2: "Some other Institution, Cape Town, South Africa"
-Email2: "John\\@gmail.com"
-CommonAffiliation_12: TRUE # If Author 1 and 2 have a common affiliation. Works with _13, _23, etc.
-
-Author3: "John Doe"
-Email3: "Joe\\@gmail.com"
-
-CorrespAuthor_1: TRUE  # If corresponding author is author 3, e.g., use CorrespAuthor_3: TRUE
 
 # Comment out below to remove both. JEL Codes only given if keywords also given.
-keywords: "Multivariate GARCH \\sep Kalman Filter \\sep Copula" # Use \\sep to separate
-JELCodes: "L250 \\sep L100"
+keywords: "Multivariate GARCH \\sep DCC \\sep Go-GARCH \\sep Portfolio Optimization" # Use \\sep to separate
+#JELCodes: "L250 \\sep L100"
 
 # ----- Manage headers and footers:
 #BottomLFooter: $Title$
@@ -92,7 +83,7 @@ output:
     fig_width: 3.5 # Adjust default figure sizes. This can also be done in the chunks of the text.
     fig_height: 3.5
 abstract: |
-  Abstract to be written here. The abstract should not be too long and should provide the reader with a good understanding what you are writing about. Academic papers are not like novels where you keep the reader in suspense. To be effective in getting others to read your paper, be as open and concise about your findings here as possible. Ideally, upon reading your abstract, the reader should feel he / she must read your paper in entirety.
+  
 ---
 
 <!-- First: Set your default preferences for chunk options: -->
@@ -113,27 +104,28 @@ pacman::p_load("tidyverse", "devtools", "rugarch", "rmgarch", "zoo", "factoextra
 
 # Introduction \label{Introduction}
 
-The idea of asset co-movements is important to investors because they provide insight into the underlying relationships between assets and the risk and return characteristics of a portfolio, which can inform investment decisions and help to improve portfolio performance. In particular, portfolio diversification helps to reduce the risk of large losses by spreading investments across a variety of assets and can lead to increased returns by providing exposure to a wider range of economic and market conditions (Brière et al., 2012.
+The idea of asset co-movements is important to investors because they provide insight into the underlying relationships between assets and the risk and return characteristics of a portfolio, which can inform investment decisions and help to improve portfolio performance. In particular, portfolio diversification helps to reduce the risk of large losses by spreading investments across a variety of assets and can lead to increased returns by providing exposure to a wider range of economic and market conditions [@briere2012no].
 
-A large body of literature has investigated the effect of the Global Financial Crisis (GFC) on the relationship across various asset classes (Mensi et al., 2016; Zhang and Broadstock, 2018). These studies have shown how the GFC has intensified market relations and affected asset allocation and hedging strategies. As such, fluctuations in interdependence across financial markets can greatly affect investors seeking diversification benefits.
+A large body of literature has investigated the effect of the Global Financial Crisis (GFC) on the relationship across various asset classes [@mensi2016global; @zhang2020global]. These studies have shown how the GFC has intensified market relations and affected asset allocation and hedging strategies. As such, fluctuations in interdependence across financial markets can greatly affect investors seeking diversification benefits.
 
-Several studies have examined the time-varying correlations between asset classes in South Africa using various techniques. @bouri2021return, for example, studied the dynamic connectedness across five assets using the TVP-VAR connectedness approach. @bouri2021return shows that total connectedness spiked around the COVID-19 outbreak, which subsequently altered the structure of the network of connectedness and posed a threat to investors’ portfolios. Horvath, et al (2011) studied the conditional correlation between sectors of numerous economies, including South Africa, using the BEKK MV-GARCH approach. @duncan2013domestic used generalised variance decompositions of a vector autoregressive model to study the time-varying domestic and foreign volatility spillovers and evolving linkages across asset classes in South Africa and global capital markets.
+Several studies have examined the time-varying correlations between asset classes in South Africa using various techniques. @bouri2021return, for example, studied the dynamic connectedness across five assets using the TVP-VAR connectedness approach. @bouri2021return shows that total connectedness spiked around the COVID-19 outbreak, which subsequently altered the structure of the network of connectedness and posed a threat to investors’ portfolios. @horvath2012international studied the conditional correlation between sectors of numerous economies, including South Africa, using the BEKK MV-GARCH approach. @duncan2013domestic used generalised variance decompositions of a vector autoregressive model to study the time-varying domestic and foreign volatility spillovers and evolving linkages across asset classes in South Africa and global capital markets.
 
 The analysis in this paper is divided into two parts. First, I will analyse the time-varying conditional correlations between the different asset classes by using @engle2002dynamic Dynamic Conditional Correlation (DCC) Model as well as a GO-GARCH model. DCC models are statistical models used in finance and economics to capture the changing correlations between multiple time series. These models allow for changes in the correlations between time series over time, which is important in modelling the behaviour of assets that are dependent on each other [@engle2002dynamic]. DCC models use a multivariate GARCH framework to capture the dynamics of the covariance matrix of the series over time.
+
 The second part of the analysis will focus on portfolio optimization. Portfolio optimization is the process of determining the optimal allocation of assets in a portfolio in order to maximize returns or minimize risk. This typically involves using mathematical models to identify the portfolio that offers the best trade-off between risk and return, taking into account constraints such as investment budgets and risk tolerance [@ledoit2003improved]. The optimization process takes into account factors such as expected returns, volatilities, and correlations between assets in order to determine the optimal portfolio mix.
 
 # Methodology
 
 ## DCC specification
 
-The method behind DCC models is based on the idea of modeling the covariance matrix of the returns of multiple assets over time. For Engle's (2002) DCC model the variance-covariance matrix can be written as:
+The method behind DCC models is based on the idea of modeling the covariance matrix of the returns of multiple assets over time. For @engle2002dynamic DCC model the variance-covariance matrix can be written as ^[The paper was written using the 'Texevier' package developed by N.F. Katzke (2016)]:
 
 
 \begin{equation} \label{dcc}
 H_t = D_t.R_t.D_t.
 \end{equation}
 
-Estimating $R_T$ now requires it to be inverted at each estimated period, and thus a proxy equation is used (Engle (2002)):
+Estimating $R_T$ now requires it to be inverted at each estimated period, and thus a proxy equation is used:
 
 \begin{align}  \label{dcc2}
   Q_{ij,t} &= \bar Q + a\left(z_{t - 1}z'_{t - 1} - \bar{Q} \right) + b\left( Q_{ij, t - 1} - \bar{Q} \right) \hfill \\ \notag
@@ -193,17 +185,15 @@ So that the conditional covariance matrix is given by:
 
 # Data
 
-My objective is to characterise the time-varying correlation estimates to provide insight into the underlying comovement structures of a portfolio of asset classes. The empirical application in this paper aims to diversify a portfolio investing in stocks, property, gold, and Bitcoin. This study collects daily price data on the FTSE/JSE Africa All Share Index, FTSE/JSE Africa Property Index, gold, and Bitcoin. (obtained from FMXDAT package). The sample period of this study covers data from the beginning of 2015 to the end of 2019. Considering a time series of prices, this study uses daily asset returns are calculated by taking the log difference of each index series, as:
-
-
-Where pit is the closing price of the sector index, i, at time t. Logarithmic returns are usually preferred by financial econometricians because of their superior properties compared to arithmetic returns.
+My objective is to characterise the time-varying correlation estimates to provide insight into the underlying comovement structures of a portfolio of asset classes. The empirical application in this paper aims to diversify a portfolio investing in stocks, property, gold, and Bitcoin. This study collects daily price data on the FTSE/JSE Africa All Share Index, FTSE/JSE Africa Property Index, gold, and Bitcoin ^[All the data was obtained from the 'fmxdat' package in R]. The sample period of this study covers data from the beginning of 2015 to the end of 2019. Considering a time series of prices, the daily asset returns are calculated by taking the log difference of each index series, as:
 
 \begin{align} 
   r_{i,t} &= ln(\frac{P_{i,t}}{P_{i,t-1}}) * 100
 \end{align}
 
+Where $P_{i,t}$ is the closing price of the index, $i$, at time $t$. Logarithmic returns are usually preferred by financial econometricians because of their superior properties compared to arithmetic returns.
 
-In order to analyse the characteristics of the data for the return series, I first produce a chart of the price and return series. Figure 1 and 2 shows the closing prices and returns of the four asset classes. We can see from figure 2 that the return series exhibit volatility clustering.
+In order to analyse the characteristics of the data for the return series, I first produce a chart of the price and return series. The two figures below shows the closing prices and returns of the four asset classes, respectively. We can see from the second figure that the return series exhibit volatility clustering.
 
 
 ```{r}
@@ -834,13 +824,13 @@ print(gg_bitcoin)
 ```
 
 
-Figures 3 illustrates the evolution of correlation processes over time. Some asset pairs show correlations that are very volatile and some that flow from positive to negative, or from negative to positive. It indicates that the diversification potential changes over time.
+The figures above illustrate the evolution of correlation processes over time. Some asset pairs show correlations that are very volatile and some that flow from positive to negative, or from negative to positive. It indicates that the diversification potential changes over time.
 
 # Go-GARCH
 
 Generalized Orthogonal GARCH (GO-GARCH) models are used to model and forecast volatility in financial time series data. GO-GARCH models are an extension of the popular GARCH (Generalized Autoregressive Conditional Heteroskedasticity) models and combine features of both ARCH (Autoregressive Conditional Heteroskedasticity) and GARCH models. GO-GARCH models are characterized by using orthogonal (uncorrelated) innovations in the GARCH process, which results in a reduced number of parameters compared to traditional GARCH models [@boswijk2006wake]. This makes the GO-GARCH models computationally more efficient and easier to estimate. Additionally, the use of orthogonal innovations can lead to better forecasting performance, especially in situations where the underlying volatility process is highly non-linear.
 
-Figure 5 depicts the time-varying correlations between the asset classes using a GO-GARCH model.
+The figure below depict the time-varying correlations between the asset classes using a GO-GARCH model.
 
 ```{r, include=FALSE}
 # Go-garch
@@ -934,7 +924,7 @@ print(gg_go_prop)
 
 
 ```{r}
-print(gg_go_prop)
+print(gg_go_gold)
 
 ```
 
@@ -960,10 +950,10 @@ The most noticeable difference between the GO-GARCH correlations and the DCC cor
 
 # Portfolio optimization
 
-In the final section of this paper, I use the data on equities, property, gold and Bitcoin to optimize three portfolios with a linear constraint of long only. In particular, I construct an equal weight portfolio, a global minimum variance portfolio, and a tangency portfolio. The equal weight portfolio gives equal weights of 25 percent to each of the assets in the portfolio. The global minimum portfolio refers to a portfolio that has the minimum possible risk or variance among all possible portfolios constructed from the set of assets. In other words, it is the portfolio with the lowest possible risk among all portfolios with a given expected return. Finally, the tangency portfolio is a portfolio that lies on the efficient frontier and is the portfolio with the highest Sharpe ratio. The Sharpe ratio is a measure of the risk-adjusted return of an investment, defined as the excess return over the risk-free rate divided by the standard deviation of the investment's returns [Sharpe, 1966].
+In the final section of this paper, I use the data on equities, property, gold and Bitcoin to optimize three portfolios with a linear constraint of long only. In particular, I construct an equal weight portfolio, a global minimum variance portfolio, and a tangency portfolio. The equal weight portfolio gives equal weights of 25 percent to each of the assets in the portfolio. The global minimum portfolio refers to a portfolio that has the minimum possible risk or variance among all possible portfolios constructed from the set of assets. In other words, it is the portfolio with the lowest possible risk among all portfolios with a given expected return. Finally, the tangency portfolio is a portfolio that lies on the efficient frontier and is the portfolio with the highest Sharpe ratio. The Sharpe ratio is a measure of the risk-adjusted return of an investment, defined as the excess return over the risk-free rate divided by the standard deviation of the investment's returns [@sharpe1966mutual].
 
 
-The pie charts below illustrate the optimal weighting as defined by each portfolio. As expected, we see that Bitcoin receives a very small weighting (1.3%) in the global minimum portfolio since it is deemed high risky. 
+The pie charts below illustrate the optimal weighting as defined by the equally weighted, global minimum, and tangency portfolios', respectively. As expected, we see that Bitcoin receives a very small weighting (1.3%) in the global minimum portfolio since it is deemed high risk. 
 
 ```{r, include=FALSE}
 # efficiency portfolio
@@ -1107,7 +1097,7 @@ charts.PerformanceSummary(Portfolio_Return_tangent,
 ```
 
 
-Finally, table 1 displays the target returns and risks associated with each portfolio.
+Finally, the table displays the target returns and risks associated with each portfolio.
 
 $$
 \begin{array}{|c|c|c|c|c|}
@@ -1119,9 +1109,9 @@ $$
 \end{array}
 $$
 
-It is surprising that the expected returns of the equally weighted portfolio are higher than the tangency portfolio. However, from figure we see that as the amount of risk increases the weights assigned to the property index decreases. Thus, it could be that the tangency portfolio deems property stocks to risky relative to its return series, hence assigning it a weight if zero. 
+It is surprising that the expected returns of the equally weighted portfolio are higher than the tangency portfolio. However, from the figure displaying the weights along the frontier we see that as the amount of risk increases the weights assigned to the property index decreases. Thus, it could be that the tangency portfolio deems property stocks to risky relative to its return series, hence assigning it a weight if zero. 
 
-Conditional Value at Risk (CVaR) is a risk measure that quantifies the expected loss for a portfolio or investment for a given confidence level. It provides a more complete picture of the risk associated with an investment by focusing on the tail risk and providing information about the potential losses in the worst-case scenarios. It is evident that the equally weighted portfolio has the highest expected loss followed by the tangency portfolio and the global minimum portfolio. By considering both the mean return and the CVaR, it seems that the risk and return trade-off for an equally weighted portfolio is quite high. As such, the tangency portfolio appears to perform the best, even though it mean returns is slightly lower. 
+Conditional Value at Risk (CVaR) is a risk measure that quantifies the expected loss for a portfolio or investment for a given confidence level. It provides a more complete picture of the risk associated with an investment by focusing on the tail risk and providing information about the potential losses in the worst-case scenarios. It is evident that the equally weighted portfolio has the highest expected loss followed by the tangency portfolio and the global minimum portfolio. By considering both the mean return and the CVaR, it seems that the risk and return trade-off for an equally weighted portfolio is quite high. As such, the tangency portfolio appears to perform the best, even though its mean return is slightly lower. 
 
 # Conclusion
 
@@ -1136,15 +1126,6 @@ Furthermore, the study demonstrated the significance of regularly monitoring and
 
 
 
-
-
-
-
-
-
-
-
-
 \newpage
 
 # References {-}
@@ -1152,11 +1133,4 @@ Furthermore, the study demonstrated the significance of regularly monitoring and
 <div id="refs"></div>
 
 
-# Appendix {-}
-
-## Appendix A {-}
-
-Some appendix information here
-
-## Appendix B {-}
 
