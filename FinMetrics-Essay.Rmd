@@ -101,297 +101,743 @@ abstract: |
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE, fig.width = 6, fig.height = 5, fig.pos="H", fig.pos = 'H')
-# Note: Include = FALSE implies the code is executed, but not printed in your pdf.
-# warning and message = FALSE implies ugly messages and warnings are removed from your pdf.
-# These should be picked up when you execute the command chunks (code sections below) in your rmd, not printed in your paper!
 
-# Lets load in example data, and see how this can be stored and later called from your 'data' folder.
-if(!require("tidyverse")) install.packages("tidyverse")
-library(tidyverse)
-Example_data <- Texevier::Ex_Dat
+pacman::p_load("tidyverse", "devtools", "rugarch", "rmgarch", "zoo", "factoextra",
+               "forecast", "tbl2xts", "lubridate", "PerformanceAnalytics",
+               "ggthemes", "dplyr", "cowplot", "fmxdat", "glue","MTS",
+               "robustbase","tidyr", "dplyr", "purrr")
 
-# Notice that as you are working in a .Rproj file (I am assuming you are) - the relative paths of your directories start at your specified root.
-# This means that when working in a .Rproj file, you never need to use getwd() - it is assumed as your base root automatically.
-write_rds(Example_data, path = "data/Example_data.rds")
-
+list.files('C:/Users/Cabous/OneDrive/Desktop/Fin_Metrics_Essay/FinMetrics-Essay/code/', full.names = T, recursive = T) %>% 
+    .[grepl('.R', .)] %>% as.list() %>% walk(~source(.))
 ```
 
-
-<!-- ############################## -->
-<!-- # Start Writing here: -->
-<!-- ############################## -->
 
 # Introduction \label{Introduction}
 
-References are to be made as follows: @fama1997[p. 33] and @grinold2000 Such authors could also be referenced in brackets [@grinold2000] and together [@fama1997 \& @grinold2000]. Source the reference code from scholar.google.com by clicking on ``cite'' below article name. Then select BibTeX at the bottom of the Cite window, and proceed to copy and paste this code into your ref.bib file, located in the directory's Tex folder. Open this file in Rstudio for ease of management, else open it in your preferred Tex environment. Add and manage your article details here for simplicity - once saved, it will self-adjust in your paper.
+The idea of asset co-movements is important to investors because they provide insight into the underlying relationships between assets and the risk and return characteristics of a portfolio, which can inform investment decisions and help to improve portfolio performance. In particular, portfolio diversification helps to reduce the risk of large losses by spreading investments across a variety of assets and can lead to increased returns by providing exposure to a wider range of economic and market conditions (Brière et al., 2012.
 
-> I suggest renaming the top line after \@article, as done in the template ref.bib file, to something more intuitive for you to remember. Do not change the rest of the code. Also, be mindful of the fact that bib references from google scholar may at times be incorrect. Reference Latex forums for correct bibtex notation.
+A large body of literature has investigated the effect of the Global Financial Crisis (GFC) on the relationship across various asset classes (Mensi et al., 2016; Zhang and Broadstock, 2018). These studies have shown how the GFC has intensified market relations and affected asset allocation and hedging strategies. As such, fluctuations in interdependence across financial markets can greatly affect investors seeking diversification benefits.
 
-To reference a section, you have to set a label using ``\\label'' in R, and then reference it in-text as e.g. referencing a later section, Section \ref{Meth}.
+Several studies have examined the time-varying correlations between asset classes in South Africa using various techniques. @bouri2021return, for example, studied the dynamic connectedness across five assets using the TVP-VAR connectedness approach. @bouri2021return shows that total connectedness spiked around the COVID-19 outbreak, which subsequently altered the structure of the network of connectedness and posed a threat to investors’ portfolios. Horvath, et al (2011) studied the conditional correlation between sectors of numerous economies, including South Africa, using the BEKK MV-GARCH approach. @duncan2013domestic used generalised variance decompositions of a vector autoregressive model to study the time-varying domestic and foreign volatility spillovers and evolving linkages across asset classes in South Africa and global capital markets.
 
-Writing in Rmarkdown is surprizingly easy - see [this website](https://www.rstudio.com/wp-content/uploads/2015/03/rmarkdown-reference.pdf) cheatsheet for a summary on writing Rmd writing tips.
+The analysis in this paper is divided into two parts. First, I will analyse the time-varying conditional correlations between the different asset classes by using @engle2002dynamic Dynamic Conditional Correlation (DCC) Model as well as a GO-GARCH model. DCC models are statistical models used in finance and economics to capture the changing correlations between multiple time series. These models allow for changes in the correlations between time series over time, which is important in modelling the behaviour of assets that are dependent on each other [@engle2002dynamic]. DCC models use a multivariate GARCH framework to capture the dynamics of the covariance matrix of the series over time.
+The second part of the analysis will focus on portfolio optimization. Portfolio optimization is the process of determining the optimal allocation of assets in a portfolio in order to maximize returns or minimize risk. This typically involves using mathematical models to identify the portfolio that offers the best trade-off between risk and return, taking into account constraints such as investment budgets and risk tolerance [@ledoit2003improved]. The optimization process takes into account factors such as expected returns, volatilities, and correlations between assets in order to determine the optimal portfolio mix.
 
-# Data  {-}
+# Methodology
 
-Notice how I used the curly brackets and dash to remove the numbering of the data section.
+## DCC specification
 
-Discussion of data should be thorough with a table of statistics and ideally a figure.
-
-In your tempalte folder, you will find a Data and a Code folder. In order to keep your data files neat, store all of them in your Data folder. Also, I strongly suggest keeping this Rmd file for writing and executing commands, not writing out long pieces of data-wrangling. In the example below, I simply create a ggplot template for scatter plot consistency. I suggest keeping all your data in a data folder.
-
-<!-- The following is a code chunk. It must have its own unique name (after the r), or no name. After the comma follows commands for R which are self-explanatory. By default, the code and messages will not be printed in your pdf, just the output: -->
-
-```{r Figure1,  warning =  FALSE, fig.align = 'center', fig.cap = "Caption Here \\label{Figure1}", fig.ext = 'png', fig.height = 3, fig.width = 6}
-
-  # This is just a random plot to show you a plot. This is done if the getwd() does not point to your Template's directory.
-  # Set WD below to your project's working directory.
-
-  g <-
-  ggplot(data = mtcars) +
-  geom_point(aes(x = disp, y = hp, color = cyl)) +
-  theme_bw() +
-  # theme(legend.position = "none") +
-  theme(plot.title = element_text(size = 10)) +
-  theme(axis.title = element_text(size = 10),
-        axis.title.x = element_text()) +
-  labs(y = "y-axis", x = "x-axis", title = "Some amazing plot")
-
-g
-
-```
-
-To make your graphs look extra nice in latex world, you could use Tikz device. Replace dev - 'png' with 'tikz' in the chunk below. Notice this makes the build time longer and produces extra tex files - so if you are comfortable with this, set your device to Tikz and try it out:
-
-```{r Figure2, warning =  FALSE, fig.align = 'center', fig.cap = "Caption Here \\label{Figure2}", fig.height = 3, fig.width = 6, dev = 'png'}
-
-ExampleData <- read_rds( "data/Example_data.rds")
-
-source("code/Example_Plot_Scatter.R") # Load a function from your 'code' folder. This e.g. plots scatters to your own preferences.
-source( "code/Data_Create.R") #
-
-ExampleData <- Data_Create(N = 100) # Same as the ExampleData loaded above - this is just a function to create the stored data.
-
-g <- Example_Plot_Scatter(DataInput = ExampleData,
-                          X = "Height_Score",
-                          Y = "Weight_Score",
-                          Z = "Agility_Score",
-                          Theme = theme_bw(), # run ?ggthemes for other themes.
-                          Title = "", # I prefer to use the caption set above.
-                          Ylab = "Height",
-                          Xlab = "Lenght",
-                          LegendTitle = "Agility",
-                          TitleSize = 10,
-                          LabSize = 10)
-
-g
-
-# Although the functions above are really simple, the principle is simple: containing calculations and data wrangling in their own functions will make this template much cleaner and more manageable.
-# When you start working, delete these meaningless functions and replace with your own...
-
-```
-
-To reference the plot above, add a ``\\label'' after the caption in the chunk heading, as done above. Then reference the plot as such: As can be seen, Figures \ref{Figure1}  and \ref{Figure2} are excellent, with Figure \ref{Figure2} being particularly aesthetically pleasing due to its device setting of Tikz. The nice thing now is that it correctly numbers all your figures (and sections or tables) and will update if it moves. The links are also dynamic.
-
-I very strongly suggest using ggplot2 (ideally in combination with dplyr) using the ggtheme package to change the themes of your figures.
-
-Also note the information that I have placed above the chunks in the code chunks for the figures. You can edit any of these easily - visit the Rmarkdown webpage for more information.
-
-# Splitting a page
-
-You can also very easily split a page using built-in Pandoc formatting. I comment this out in the code (as this has caused issues building the pdf for some users - which I presume to be a Pandoc issue), but you are welcome to try it out yourself by commenting out the following section in your Rmd file.
+The method behind DCC models is based on the idea of modeling the covariance matrix of the returns of multiple assets over time. For Engle's (2002) DCC model the variance-covariance matrix can be written as:
 
 
-<!-- :::::: {.columns data-latex="[T]"} -->
-<!-- ::: {.column data-latex="{0.7\textwidth}"} -->
-<!-- ```{r, echo=FALSE, fig.width=4, fig.height=4} -->
-<!-- par(mar = c(4, 4, .2, .1)) -->
-<!-- plot(cars, pch = 19) -->
-<!-- ``` -->
-<!-- ::: -->
-<!-- ::: {.column data-latex="{0.05\textwidth}"} -->
-<!-- \ -->
-<!-- ::: -->
-<!-- ::: {.column data-latex="{0.2\textwidth}"} -->
-<!-- \scriptsize -->
+\begin{equation} \label{dcc}
+H_t = D_t.R_t.D_t.
+\end{equation}
 
-<!-- ## Data {-} -->
-<!-- The figure on the left-hand side shows the `cars` data. -->
+Estimating $R_T$ now requires it to be inverted at each estimated period, and thus a proxy equation is used (Engle (2002)):
 
-<!-- Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do -->
-<!-- eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut -->
-<!-- enim ad minim veniam, quis nostrud exercitation ullamco laboris -->
-<!-- nisi ut aliquip ex ea commodo consequat. -->
-<!-- ::: -->
-<!-- :::::: -->
-
-
-
-#  Methodology \label{Meth}
-
-## Subsection
-Ideally do not overuse subsections. It equates to bad writing.^[This is an example of a footnote by the way. Something that should also not be overused.]
-
-## Math section
-
-Equations should be written as such:
-
-\begin{align}
-\beta = \sum_{i = 1}^{\infty}\frac{\alpha^2}{\sigma_{t-1}^2} \label{eq1} \\
-\int_{x = 1}^{\infty}x_{i} = 1 \notag
+\begin{align}  \label{dcc2}
+  Q_{ij,t} &= \bar Q + a\left(z_{t - 1}z'_{t - 1} - \bar{Q} \right) + b\left( Q_{ij, t - 1} - \bar{Q} \right) \hfill \\ \notag
+        &= (1 - a - b)\bar{Q} + az_{t - 1}z'_{t - 1} + b.Q_{ij, t - 1} \notag
 \end{align}
 
-If you would like to see the equations as you type in Rmarkdown, use $ symbols instead (see this for yourself by adjusted the equation):
+With non-negative scalars $a$ and $b$, and with:
 
-$$
-\beta = \sum_{i = 1}^{\infty}\frac{\alpha^2}{\sigma_{t-1}^2} \\
-\int_{x = 1}^{\infty}x_{i} = 1
-$$
+* $Q_{ij, t}$ the unconditional (sample) variance estimate between series $i$ and $j$ ,
 
-Note again the reference to equation \ref{eq1}. Writing nice math requires practice. Note I used a forward slashes to make a space in the equations. I can also align equations using  __\&__, and set to numbering only the first line. Now I will have to type ``begin equation'' which is a native \LaTeX command. Here follows a more complicated equation:
+* $\bar{Q}$ the unconditional matrix of standardized residuals from each univariate pair estimate.
 
+We next estimate $R_T$ as:
 
-\begin{align}
-	y_t &= c + B(L) y_{t-1} + e_t   \label{eq2}    \\ \notag
-	e_t &= H_t^{1/2}  z_t ; \quad z_t \sim  N(0,I_N) \quad \& \quad H_t = D_tR_tD_t \\ \notag
-		D_t^2 &= {\sigma_{1,t}, \dots, \sigma_{N,t}}   \\ \notag
-		\sigma_{i,t}^2 &= \gamma_i+\kappa_{i,t}  v_{i, t-1}^2 +\eta_i  \sigma_{i, t-1}^2, \quad \forall i \\ \notag
-		R_{t, i, j} &= {diag(Q_{t, i, j}}^{-1}) . Q_{t, i, j} . diag(Q_{t, i, j}^{-1})  \\ \notag
-		Q_{t, i, j} &= (1-\alpha-\beta)  \bar{Q} + \alpha  z_t  z_t'  + \beta  Q_{t, i, j} \notag
+\begin{align}\label{eq:dcc3}
+R_t &= diag(Q_t)^{-1/2}Q_t.diag(Q_t)^{-1/2}. 
 \end{align}
 
-Note that in \ref{eq2} I have aligned the equations by the equal signs. I also want only one tag, and I create spaces using ``quads''.
+The dynamic conditional correlation matrix, will therefore have entries in the bivariate framework as follows:
 
-See if you can figure out how to do complex math using the two examples provided in \ref{eq1} and \ref{eq2}.
-
-<!-- $$ -->
-<!-- This is a commented out section in the writing part. -->
-<!-- Comments are created by highlighting text, amnd pressing CTL+C -->
-<!-- \\begin{align} -->
-<!-- \\beta = \\alpha^2 -->
-<!-- \end{align} -->
-<!-- $$ -->
-
-# Results
-
-Tables can be included as follows. Use the _xtable_ (or kable) package for tables. Table placement = H implies Latex tries to place the table Here, and not on a new page (there are, however, very many ways to skin this cat. Luckily there are many forums online!).
+\begin{align}
+R_t &= \rho_{ij,t} = \frac{q_{i,j,t}}{\sqrt{q_{ii,t}.q_{jj,t}}} 
+\end{align}
 
 
-```{r ShortTable, results = 'asis'}
 
-library(xtable)
-data <- mtcars[1:5,] %>% tibble::as_tibble()
+## Go-GARCH specification
 
-table <- xtable(data, caption = "Short Table Example \\label{tab1}")
-  print.xtable(table,
-             # tabular.environment = "longtable",
-             floating = TRUE,
-             table.placement = 'H',
-             # scalebox = 0.3,
-             comment = FALSE,
-             caption.placement = 'bottom'
-             )
+The methodology behind Go-GARCH models is based on a combination of the GARCH (Generalized Autoregressive Conditional Heteroskedasticity) framework and the concept of orthogonalization. Orthogonalization is used to ensure that the parameters of the model are estimated in an uncorrelated and unbiased manner. This can help to improve the stability and accuracy of the model's predictions.
+
+These orthogonal components are measured by identifying independent and uncorrelated factors that make up the var-covar matrix $H_t$. The statistical transformations are done as follows:
+
+\begin{align}
+r_t &= \mu_t +\varepsilon_t  \\
+\varepsilon_t &= A.f_t 
+\end{align}
+
+with $A$ linking the unobserved uncorrelated components with the observed residual process. Also: $f_t$ represents the unobserved independent factors assigned to each series (factor weights), such that:
+
+\begin{align}
+    f_t = H^{1/2}.z_t
+\end{align}
+
+with $H_T$ and $z_t$ as before and:
+
+\begin{align}
+E[f_t] &= 0 ; \qquad \qquad E[f_tf_t'] = I_N \notag \\
+E[\varepsilon_t] &= 0 ; \qquad \qquad E[\varepsilon_t\varepsilon_t'] = AA'
+\end{align}
+
+So that the conditional covariance matrix is given by:
+
+\begin{align}
+    \Sigma_t=AH_tA'
+\end{align}
+
+
+# Data
+
+My objective is to characterise the time-varying correlation estimates to provide insight into the underlying comovement structures of a portfolio of asset classes. The empirical application in this paper aims to diversify a portfolio investing in stocks, property, gold, and Bitcoin. This study collects daily price data on the FTSE/JSE Africa All Share Index, FTSE/JSE Africa Property Index, gold, and Bitcoin. (obtained from FMXDAT package). The sample period of this study covers data from the beginning of 2015 to the end of 2019. Considering a time series of prices, this study uses daily asset returns are calculated by taking the log difference of each index series, as:
+
+
+Where pit is the closing price of the sector index, i, at time t. Logarithmic returns are usually preferred by financial econometricians because of their superior properties compared to arithmetic returns.
+
+\begin{align} 
+  r_{i,t} &= ln(\frac{P_{i,t}}{P_{i,t-1}}) * 100
+\end{align}
+
+
+In order to analyse the characteristics of the data for the return series, I first produce a chart of the price and return series. Figure 1 and 2 shows the closing prices and returns of the four asset classes. We can see from figure 2 that the return series exhibit volatility clustering.
+
+
+```{r}
+# Import Data
+
+bonds_raw <- read_rds("data/SA_Bonds.rds")
+
+Indexes_raw <- fmxdat::SA_Indexes
+
+gold_raw <- read_rds("data/comms.rds")
+
+bitcoin_raw <- fmxdat::cryptos
+
+# Filter relevant indexes
+# Equities and Property
+
+Indexes <- Indexes_raw %>%
+
+    arrange(date) %>%
+
+    dplyr::filter(Tickers %in% c("JALSHTR Index", "JSAPYTR Index")) %>%
+
+    select(-ShareName)
+
+colnames(Indexes) = c("date","Ticker","Price")
+
+# Gold
+Gold <- gold_raw %>%
+
+    arrange(date) %>%
+
+    dplyr::filter(Name %in% "Gold")
+
+colnames(Gold) = c("date","Ticker","Price")
+
+# Bitcoin
+
+Bitcoin <- bitcoin_raw %>%
+
+    arrange(date) %>%
+
+    dplyr::filter(name %in% "Bitcoin") %>%
+
+    select(date, name, close)
+
+colnames(Bitcoin) = c("date","Ticker","Price")
+
+# Combine data
+
+asset_classes <- rbind(Indexes, Gold, Bitcoin)
+
+# Calculate Return
+library(rmsfuns)
+
+datescol <- dateconverter(as.Date("2015-01-01"), as.Date("2019-12-31"),
+                          "weekdayEOW")
+
+asset_classes_ret <- asset_classes %>%
+
+    group_by(Ticker) %>%
+    
+    mutate(dlogret = log(Price) - log(dplyr::lag(Price))) %>%
+
+    mutate(scaledret = (dlogret - mean(dlogret, na.rm = T)))  %>%
+
+    dplyr::filter(date > dplyr::first(date)) %>%
+
+    dplyr::filter(date %in% datescol) %>% 
+
+    ungroup()
+
+
+# Graph
+# check for obvious outliers in the returns series:
+
+#ggplot(asset_classes_ret) +
+
+#    geom_line(aes(x = date, y = Price, colour = Ticker,
+#                                alpha = 0.5)) +
+
+#    ggtitle("Price Changes: Asset Classes") +
+
+#    guides(alpha = "none") +
+
+#    fmxdat::theme_fmx()
+
+
+# Or cleaning the plot up a bit....
+
+ggplot(asset_classes_ret) +
+
+    geom_line(aes(x = date, y = Price, colour = Ticker,
+                                alpha = 0.5)) +
+
+    ggtitle("Price Changes: Asset Classes") +
+
+    facet_wrap(~Ticker, scales = "free_y") +
+
+    guides(alpha = "none") +
+
+    fmxdat::theme_fmx() +
+
+    scale_color_hue(l = 20) +
+
+    scale_x_date(labels = scales::date_format("'%y"), date_breaks = "2 years") +
+
+    theme(axis.text = element_text(size = 7))
 
 ```
 
-To reference calculations __in text__, _do this:_ From table \ref{tab1} we see the average value of mpg is `r mean(mtcars[1:5,]$mpg)`.
 
-Including tables that span across pages, use the following (note that I add below the table: ``continue on the next page''). This is a neat way of splitting your table across a page.
+```{r}
+# log returns
 
-Use the following default settings to build your own possibly long tables. Note that the following will fit on one page if it can, but cleanly spreads over multiple pages:
+ggplot(asset_classes_ret) +
 
-```{r LongTable, results = 'asis'}
+    geom_line(aes(x = date,y =dlogret, color = Ticker, alpha = 0.5)) +
 
-library(xtable)
+    ggtitle("Log Returns: Asset Classes") +
 
-data = mtcars %>% tibble::as_tibble()
-  addtorow          <- list()
-  addtorow$pos      <- list()
-  addtorow$pos[[1]] <- c(0)
-  addtorow$command  <- c(paste("\\hline \n",
-                               "\\endhead \n",
-                               "\\hline \n",
-                               "{\\footnotesize Continued on next page} \n",
-                               "\\endfoot \n",
-                               "\\endlastfoot \n",sep=""))
-table <- xtable(data, caption = "Long Table Example")
-  print.xtable(table,
-             tabular.environment = "longtable",
-             floating = FALSE, # Leave this as is.
-             table.placement = 'H', # Leave this as is.
-             booktabs = T, # Aesthetics
-             include.rownames = FALSE,  # Typically you don't want this in a table.
-             add.to.row = addtorow, # For adding the Continued on next page part...
-             comment = FALSE,
-             caption.placement = 'top',  # Where do you want the caption?
-             size="\\fontsize{12pt}{13pt}\\selectfont"  # Size of text in table..
-             )
-# See https://cran.r-project.org/web/packages/xtable/vignettes/xtableGallery.pdf for table inspiration
-```
+    facet_wrap(~Ticker, scales = "free") +
 
-\hfill
+    guides(fill = "none", alpha = "none") +
 
-<!-- hfill can be used to create a space, like here between text and table. -->
-
-
-## Huxtable
-
-Huxtable is a very nice package for making working with tables between Rmarkdown and Tex easier.
-
-This cost some adjustment to the Tex templates to make it work, but it now works nicely.
-
-See documentation for this package [here](https://hughjonesd.github.io/huxtable/huxtable.html). A particularly nice addition of this package is for making the printing of regression results a joy (see [here](https://hughjonesd.github.io/huxtable/huxtable.html#creating-a-regression-table)). Here follows an example:
-
-
-If you are eager to use huxtable, comment out the Huxtable table in the Rmd template, and uncomment the colortbl package in your Rmd's root.
-
-Note that I do not include this in the ordinary template, as some latex users have complained it breaks when they build their Rmds (especially those using tidytex - I don't have this problem as I have the full Miktex installed on mine). Up to you, but I strongly recommend installing the package manually and using huxtable. To make this work, uncomment the _Adding additional latex packages_ part in yaml at the top of the Rmd file. Then comment out the huxtable example in the template below this line. Reknit, and enjoy.
-
-```{r, results = 'asis'}
-
-if(!require(huxtable)) install.packages(huxtable)
-library(huxtable)
-data(diamonds, package = 'ggplot2')
-Title <- "Regression Output"
-Label <- "Reg01"
-lm1 <- lm(price ~ carat, diamonds)
-lm2 <- lm(price ~ depth, diamonds)
-lm3 <- lm(price ~ carat + depth, diamonds)
-htab <-
-huxreg(lm1, lm2, lm3,
-                statistics = c(N = "nobs", R2 = "r.squared"),
-                note = "%stars%.") %>%
-  set_caption(Title) %>%
-  set_label(Label)
-# More settings:
-font_size(htab) <- 12
-# Let's change regression names: this is slightly hacky, but works. Comment out this section to see what the default looks like:
-  Names <- c( "Reg1", "Reg2", "Reg3")
-  for(i in 1:length(Names)) {
-    htab[1,][[1+i]] <- Names[i]
-  }
-# Now simply call the table:
-htab
+    fmxdat::theme_fmx()
 
 ```
 
-FYI - R also recently introduced the gt package, which is worthwhile exploring too.
 
-# Lists
+Next, I examine the Autoregressive Conditional Heteroskedasticity (ARCH) effects. To visualize the analysis of autocorrelations in the residuals and squared residuals, I graph the returns, squared returns and the absolute returns for an equally weighted portfolio of the assets using simple returns.
 
-To add lists, simply using the following notation
+```{r}
+# It seems that there is large clumping together of returns.
+#This might bias our model estimates (especially if it is only a few outliers).
+# So I'll clean data
 
-* This is really simple
+pacman::p_load(PerformanceAnalytics)
 
-    + Just note the spaces here - writing in R you have to sometimes be pedantic about spaces...
+Tidy_asset_rtn <-
 
-* Note that Rmarkdown notation removes the pain of defining \LaTeX environments!
+    left_join(
+
+        asset_classes_ret,
+
+        asset_classes_ret %>%
+
+            tbl_xts(., cols_to_xts = "dlogret", spread_by = "Ticker") %>%
+
+            PerformanceAnalytics::Return.clean(., method = c("none", "boudt", "geltner")[2], alpha = 0.01) %>%
+
+            tbl2xts::xts_tbl() %>%
+
+            gather(Ticker, CleanedRet, -date),
+
+        by = c("date", "Ticker")
+    )
+
+# Now let's see what changed:
+#Tidy_asset_rtn %>% dplyr::filter(CleanedRet != dlogret)
+
+# The MARCH test indicates that all the MV portmanteau tests reject the
+# null of no conditional heteroskedasticity, motivating our use of MVGARCH models.
+
+#Auto-Persistence in Returns
+
+# Create the Simple returns:
+
+Simple_asset_rtn <- asset_classes_ret %>%
+
+    group_by(Ticker) %>%
+
+    mutate(SimpleRet = Price / dplyr::lag(Price)-1) %>%
+
+    ungroup() %>%
+
+    mutate(date = lubridate::ymd(date)) %>% # Easier to work with ymd here
+
+    tbl_xts(., cols_to_xts = SimpleRet, spread_by = Ticker)
+
+Simple_asset_rtn[is.na(Simple_asset_rtn)] <- 0
+
+
+Weights <- asset_classes_ret %>%
+
+    mutate(YM = format(date, "%Y%b")) %>%
+
+    group_by(YM) %>%
+
+    dplyr::filter(date == last(date)) %>%
+
+    mutate(weight = 1/n()) %>%
+
+    ungroup() %>%
+
+    select(date, Ticker, weight) %>%
+
+    unique %>%
+
+    mutate(date = lubridate::ymd(date)) %>% # Easier to work with ymd here
+
+    tbl_xts(., spread_by = Ticker)
+
+Weights[is.na(Weights)] <- 0
+
+
+porteqw <- rmsfuns::Safe_Return.portfolio(Simple_asset_rtn, weight = Weights,
+                                          geometric = FALSE)
+```
+
+```{r}
+# ACF's
+
+forecast::Acf(porteqw, main = "ACF: Equally Weighted Return")
+```
+
+```{r}
+forecast::Acf(porteqw^2, main = "ACF: Squared Equally Weighted Return")
+```
+
+```{r}
+forecast::Acf(abs(porteqw), main = "ACF: Absolute Equally Weighted Return")
+
+# A formal test for ARCH effects: LBQ stats on squared returns:
+
+#Box.test(coredata(porteqw^2), type = "Ljung-Box", lag = 12)
+
+```
+
+
+
+The above figure displays a pattern of squared residuals, which indicates strong conditional heteroskedasticity. In addition, I formally test for ARCH effects using a Ljung–Box test which rejected the null of no ARCH effects - hence I need to control for the remaining conditional heteroskedasticity in the returns series.
+
+# DCC model
+
+Before fitting the most appropriate univariate GARCH specifications to each series, I check and clean the data for any missing values and outliers. Thereafter, I specify a GARCH model for each time series, which is used as the conditional covariance structure in the DCC model. Finally, I compute the dynamic correlations between each pair of assets.
+
+```{r, include=FALSE}
+# Calculate Returns for Assets
+
+# equity
+
+Equities <- Indexes %>%
+
+    group_by(Ticker) %>%
+
+    dplyr::filter(Ticker %in% "JALSHTR Index") %>%
+
+    mutate(dlogret = log(Price) - log(dplyr::lag(Price))) %>%
+
+    mutate(scaledret = (dlogret - mean(dlogret, na.rm = T))) %>%
+
+    dplyr::filter(date > dplyr::first(date)) %>%
+
+    select(-Price) %>%
+
+    dplyr::filter(date > as.Date("2014-12-31")) %>%
+
+    rename("JALSHTR_Index" = dlogret) %>%
+
+    ungroup() %>%
+
+    select(date, JALSHTR_Index)
+
+# property
+
+Property <- Indexes %>%
+
+    group_by(Ticker) %>%
+
+    dplyr::filter(Ticker %in% "JSAPYTR Index") %>%
+
+    mutate(dlogret = log(Price) - log(dplyr::lag(Price))) %>%
+
+    mutate(scaledret = (dlogret - mean(dlogret, na.rm = T))) %>%
+
+    dplyr::filter(date > dplyr::first(date)) %>%
+
+    select(-Price) %>%
+
+    dplyr::filter(date > as.Date("2014-12-31")) %>%
+
+    rename("JSAPYTR_Index" = dlogret) %>%
+
+    ungroup() %>%
+
+    select(date, JSAPYTR_Index)
+
+# gold
+
+Gold_ret <- gold_raw %>%
+
+    group_by(Name) %>%
+
+    dplyr::filter(Name %in% "Gold") %>%
+
+    mutate(dlogret = log(Price) - log(dplyr::lag(Price))) %>%
+
+    mutate(scaledret = (dlogret - mean(dlogret, na.rm = T))) %>%
+
+    dplyr::filter(date > dplyr::first(date)) %>%
+
+    select(-Price) %>%
+
+    dplyr::filter(date > as.Date("2014-12-31")) %>%
+
+    rename("Gold" = dlogret) %>%
+
+    ungroup() %>%
+
+    select(date, Gold)
+
+
+# bitcoin
+
+Bit_ret <- Bitcoin %>%
+
+    mutate(dlogret = log(Price) - log(dplyr::lag(Price))) %>%
+
+    mutate(scaledret = (dlogret - mean(dlogret, na.rm = T))) %>%
+
+    dplyr::filter(date > dplyr::first(date)) %>%
+
+    select(-Price) %>%
+
+    dplyr::filter(date > as.Date("2014-12-31")) %>%
+
+    rename("Bitcoin" = dlogret) %>%
+
+    select(date, Bitcoin)
+
+# Combine and wrangle for DCC models
+
+asset_xts_ret <- left_join(Equities, Property, by = c("date")) %>%
+
+    left_join(., Gold_ret, by = c("date")) %>%
+
+    left_join(., Bit_ret, by = c("date")) %>%
+
+    tbl_xts()
+
+asset_xts_ret <- asset_xts_ret %>%
+
+    xts_tbl() %>%
+
+    dplyr::filter(date < as.Date("2020-01-01")) %>%
+
+    tbl_xts()
+
+asset_tbl_ret <- asset_xts_ret %>% xts_tbl()
+
+
+asset_xts_ret <- na.locf(asset_xts_ret, na.rm = F, maxgap = 10)
+
+# Lets test for autocorrelation using the March Test
+
+MarchTest(asset_xts_ret)
+
+# GARCH specifications
+
+uspec <- ugarchspec(variance.model = list(model = "gjrGARCH",
+                                          garchOrder = c(1, 1)), mean.model = list(armaOrder = c(1,
+                                                                                                 0), include.mean = TRUE), distribution.model = "sstd")
+
+multi_univ_garch_spec <- multispec(replicate(ncol(asset_xts_ret), uspec))
+
+# DCC specifications
+
+spec.dcc = dccspec(multi_univ_garch_spec, dccOrder = c(1, 1),
+                   distribution = "mvnorm", lag.criterion = c("AIC", "HQ", "SC",
+                                                              "FPE")[1], model = c("DCC", "aDCC")[1])
+
+# Enable clustering for speed:
+
+cl = makePSOCKcluster(10)
+
+# Fit GARCH
+
+multf = multifit(multi_univ_garch_spec, asset_xts_ret, cluster = cl)
+
+# Fit DCC
+
+fit.dcc = dccfit(spec.dcc, data = asset_xts_ret, solver = "solnp",
+                 cluster = cl, fit.control = list(eval.se = FALSE), fit = multf)
+
+# Check Model
+
+RcovList <- rcov(fit.dcc)
+
+covmat = matrix(RcovList, nrow(asset_xts_ret), ncol(asset_xts_ret) * ncol(asset_xts_ret),
+                byrow = TRUE)
+
+mc1 = MCHdiag(asset_xts_ret, covmat)
+
+
+# Wrangle output
+dcc.time.var.cor <- rcor(fit.dcc)
+print(dcc.time.var.cor[, , 1:3])
+
+dcc.time.var.cor <- aperm(dcc.time.var.cor, c(3, 2, 1))
+dim(dcc.time.var.cor) <- c(nrow(dcc.time.var.cor), ncol(dcc.time.var.cor)^2)
+
+# Rename Output
+
+dcc.time.var.cor <- renamingdcc(ReturnSeries = asset_xts_ret, DCC.TV.Cor = dcc.time.var.cor)
+
+# plot equity
+
+DCC_eq_plot <- ggplot(dcc.time.var.cor %>%
+
+                          dplyr::filter(grepl("JSAPYTR_Index_", Pairs),
+                                 !grepl("_JSAPYTR_Index", Pairs))) +
+
+    geom_line(aes(x = date, y = Rho, colour = Pairs)) +
+
+    theme_hc() + labs(subtitle = "Dynamic Conditional Correlations: JALSHTR_Index", x = "", y = "") +
+
+    fmx_cols() +
+
+    theme_fmx(subtitle.size = ggpts(25), legend.size = ggpts(15))
+
+plot_grid(DCC_eq_plot, labels = c(''))
+
+
+###################################
+
+DCCPre <- dccPre(asset_xts_ret, include.mean = T, p = 0)
+
+names(DCCPre)
+
+# We now have the estimates of volatility for each series.
+
+Vol <- DCCPre$marVol
+
+colnames(Vol) <- colnames(asset_xts_ret)
+
+Vol <-
+    data.frame( cbind( date = index(asset_xts_ret), Vol)) %>%
+
+    mutate(date = as.Date(date)) %>%
+
+    tbl_df()
+
+TidyVol <- Vol %>%
+
+    gather(Stocks, Sigma, -date)
+
+ggplot(TidyVol) + geom_line(aes(x = date, y = Sigma, colour = Stocks))
+
+# ------- Back to DCC:
+
+# After saving now the standardized residuals:
+StdRes <- DCCPre$sresi
+
+detach("package:tidyverse", unload=TRUE)
+detach("package:tbl2xts", unload=TRUE)
+
+DCC <- dccFit(StdRes, type="Engle")
+
+pacman::p_load("tidyverse", "tbl2xts", "broom")
+
+Rhot <- DCC$rho.t
+# Right, so it gives us all the columns together in the form:
+# X1,X1 ; X1,X2 ; X1,X3 ; ....
+
+# So, let's be clever about defining more informative col names.
+# I will create a renaming function below:
+ReturnSeries = asset_xts_ret
+DCC.TV.Cor = Rhot
+
+renamingdcc <- function(ReturnSeries, DCC.TV.Cor) {
+
+    ncolrtn <- ncol(ReturnSeries)
+    namesrtn <- colnames(ReturnSeries)
+    paste(namesrtn, collapse = "_")
+
+    nam <- c()
+    xx <- mapply(rep, times = ncolrtn:1, x = namesrtn)
+    # Now let's be creative in designing a nested for loop to save the names corresponding to the columns of interest..
+
+    # TIP: draw what you want to achieve on a paper first. Then apply code.
+
+    # See if you can do this on your own first.. Then check vs my solution:
+
+    nam <- c()
+    for (j in 1:(ncolrtn)) {
+        for (i in 1:(ncolrtn)) {
+            nam[(i + (j-1)*(ncolrtn))] <- paste(xx[[j]][1], xx[[i]][1], sep="_")
+        }
+    }
+
+    colnames(DCC.TV.Cor) <- nam
+
+    # So to plot all the time-varying correlations wrt SBK:
+    # First append the date column that has (again) been removed...
+    DCC.TV.Cor <-
+        data.frame( cbind( date = index(ReturnSeries), DCC.TV.Cor)) %>% # Add date column which dropped away...
+        mutate(date = as.Date(date)) %>%  tbl_df()
+
+    DCC.TV.Cor <- DCC.TV.Cor %>% gather(Pairs, Rho, -date)
+
+    DCC.TV.Cor
+
+}
+
+# Let's see if our function works! Excitement!
+Rhot <-
+    renamingdcc(ReturnSeries = asset_xts_ret, DCC.TV.Cor = Rhot)
+
+head(Rhot %>% arrange(date))
+
+# Let's now create a plot for all the stocks relative to the other stocks...
+#property
+
+gg_property <-
+    ggplot(Rhot %>%
+
+               dplyr::filter(grepl("JSAPYTR_Index_", Pairs ),
+                      !grepl("_JSAPYTR_Index", Pairs)) ) +
+    geom_line(aes(x = date, y = Rho, colour = Pairs)) +
+    theme_hc() +
+    ggtitle("Dynamic Conditional Correlations: JSAPYTR_Index")
+
+print(gg_property)
+
+# equity
+gg_equity <-
+    ggplot(Rhot %>%
+
+               dplyr::filter(grepl("JALSHTR_Index_", Pairs ),
+                      !grepl("_JALSHTR_Index", Pairs)) ) +
+    geom_line(aes(x = date, y = Rho, colour = Pairs)) +
+    theme_hc() +
+    ggtitle("Dynamic Conditional Correlations: JALSHTR_Index")
+
+print(gg_equity)
+
+# Gold
+
+gg_gold <-
+    ggplot(Rhot %>%
+
+               dplyr::filter(grepl("Gold_", Pairs ),
+                      !grepl("_Gold", Pairs)) ) +
+    geom_line(aes(x = date, y = Rho, colour = Pairs)) +
+    theme_hc() +
+    ggtitle("Dynamic Conditional Correlations: Gold")
+
+print(gg_gold)
+
+# Bitcoin
+
+gg_bitcoin <-
+    ggplot(Rhot %>%
+
+               dplyr::filter(grepl("Bitcoin_", Pairs ),
+                      !grepl("_Bitcoin", Pairs)) ) +
+    geom_line(aes(x = date, y = Rho, colour = Pairs)) +
+    theme_hc() +
+    ggtitle("Dynamic Conditional Correlations: Bitcoin")
+
+print(gg_bitcoin)
+
+```
+
+
+```{r}
+# combine dcc plots
+
+plot_grid(finplot(gg_equity), finplot(gg_property),
+
+          finplot(gg_gold), finplot(gg_bitcoin),
+
+          labels = list(title = ""),
+          label_size = ggpts(30), align = "h")
+
+```
+
+
+Figures 3 illustrates the evolution of correlation processes over time. Some asset pairs show correlations that are very volatile and some that flow from positive to negative, or from negative to positive. It indicates that the diversification potential changes over time.
+
+# Go-GARCH
+
+Generalized Orthogonal GARCH (GO-GARCH) models are used to model and forecast volatility in financial time series data. GO-GARCH models are an extension of the popular GARCH (Generalized Autoregressive Conditional Heteroskedasticity) models and combine features of both ARCH (Autoregressive Conditional Heteroskedasticity) and GARCH models. GO-GARCH models are characterized by using orthogonal (uncorrelated) innovations in the GARCH process, which results in a reduced number of parameters compared to traditional GARCH models [@boswijk2006wake]. This makes the GO-GARCH models computationally more efficient and easier to estimate. Additionally, the use of orthogonal innovations can lead to better forecasting performance, especially in situations where the underlying volatility process is highly non-linear.
+
+Figure 5 depicts the time-varying correlations between the asset classes using a GO-GARCH model.
+
+
+The most noticeable difference between the GO-GARCH correlations and the DCC correlations is the range in which they vary. Similar to @boswijk2006wake I find that the GO-GARCH and DCC correlation patterns are similar, however, from my analyse I do not find that the GO-GARCH model behaves like a smoothed version of the DCC model. Furthermore, the difference between these two models should be interpreted with caution since this property may be favourable to some and not others.
+
+
+# Portfolio optimization
+
+In the final section of this paper, I use the data on equities, property, gold and Bitcoin to optimize three portfolios with a linear constraint of long only. In particular, I construct an equal weight portfolio, a global minimum variance portfolio, and a tangency portfolio. The equal weight portfolio gives equal weights of 25 percent to each of the assets in the portfolio. The global minimum portfolio refers to a portfolio that has the minimum possible risk or variance among all possible portfolios constructed from the set of assets. In other words, it is the portfolio with the lowest possible risk among all portfolios with a given expected return. Finally, the tangency portfolio is a portfolio that lies on the efficient frontier and is the portfolio with the highest Sharpe ratio. The Sharpe ratio is a measure of the risk-adjusted return of an investment, defined as the excess return over the risk-free rate divided by the standard deviation of the investment's returns [Sharpe, 1966].
+
+
+The pie charts below illustrate the optimal weighting as defined by each portfolio. As expected, we see that Bitcoin receives a very small weighting (1.3%) in the global minimum portfolio since it is deemed high risky. 
+
+
+Figure 6 is another interesting chart that displays the weights on the different assets, the risk, and the return along the frontier. The black line through the chart indicates the minimum variance portfolio. 
+
+
+Next, I present the performance summary charts which sums up the information we need in analysing all the portfolios’ performance over time. The charts depict each portfolio’s cumulative return, daily return, and drawdown. Each portfolio is rebalanced every quarter.
+
+
+Finally, table 1 displays the target returns and risks associated with each portfolio.
+
+
+It is surprising that the expected returns of the equally weighted portfolio are higher than the tangency portfolio. However, from figure we see that as the amount of risk increases the weights assigned to the property index decreases. Thus, it could be that the tangency portfolio deems property stocks to risky relative to its return series, hence assigning it a weight if zero. 
+
+
+Conditional Value at Risk (CVaR) is a risk measure that quantifies the expected loss for a portfolio or investment for a given confidence level. It provides a more complete picture of the risk associated with an investment by focusing on the tail risk and providing information about the potential losses in the worst-case scenarios. It is evident that the equally weighted portfolio has the highest expected loss followed by the tangency portfolio and the global minimum portfolio. By considering both the mean return and the CVaR, it seems that the risk and return trade-off for an equally weighted portfolio is quite high. As such, the tangency portfolio appears to perform the best, even though it mean returns is slightly lower. 
 
 # Conclusion
 
-I hope you find this template useful. Remember, stackoverflow is your friend - use it to find answers to questions. Feel free to write me a mail if you have any questions regarding the use of this package. To cite this package, simply type citation("Texevier") in Rstudio to get the citation for @Texevier (Note that uncited references in your bibtex file will not be included in References).
+In conclusion, this study on asset class correlations and portfolio optimization has shown the importance of considering the relationships between assets when constructing a portfolio. By analysing the covariance between assets, investors can better understand the risk associated with the interactions between the assets in their portfolio and make informed decisions about the risk and return trade-off.
 
-<!-- Make title of bibliography here: -->
-<!-- \newpage -->
+The study also highlighted the potential benefits of portfolio optimization in terms of improving risk-adjusted returns and reducing portfolio risk. By using optimization techniques, investors can identify portfolios that lie on the efficient frontier and achieve the highest possible return for a given level of risk, or the lowest possible risk for a given level of return.
+
+Furthermore, the study demonstrated the significance of regularly monitoring and adjusting portfolios in response to changes in the market and in the correlations between assets. By keeping up-to-date with market developments and making necessary changes, investors can maintain a well-diversified portfolio that is better suited to their investment goals.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 \newpage
 

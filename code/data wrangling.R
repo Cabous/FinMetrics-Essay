@@ -116,7 +116,7 @@ ggplot(asset_classes_ret) +
 
 ggplot(asset_classes_ret) +
 
-    geom_histogram(aes(x = dlogret, fill = Ticker, alpha = 0.5)) +
+    geom_line(aes(x = date,y =dlogret, color = Ticker, alpha = 0.5)) +
 
     ggtitle("Log Returns: Asset Classes") +
 
@@ -548,6 +548,14 @@ gg_bitcoin <-
 
 print(gg_bitcoin)
 
+# combine dcc plots
+
+plot_grid(finplot(gg_equity), finplot(gg_property),
+
+          finplot(gg_gold), finplot(gg_bitcoin),
+
+          labels = list(title = ""),
+          label_size = ggpts(30), align = "h")
 
 ########################################
 
@@ -631,6 +639,11 @@ gg_go_bitcoin <- ggplot(gog.time.var.cor %>%
 
 print(gg_go_bitcoin)
 
+plot_grid(finplot(gg_go_equity), finplot(gg_go_prop),
 
+          finplot(gg_go_gold), finplot(gg_go_bitcoin),
+
+          labels = list(title = ""),
+          label_size = ggpts(30), align = "h")
 ################################################
 
