@@ -105,10 +105,9 @@ knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE, fig.width 
 pacman::p_load("tidyverse", "devtools", "rugarch", "rmgarch", "zoo", "factoextra",
                "forecast", "tbl2xts", "lubridate", "PerformanceAnalytics",
                "ggthemes", "dplyr", "cowplot", "fmxdat", "glue","MTS",
-               "robustbase","tidyr", "dplyr", "purrr")
+               "robustbase","tidyr", "purrr")
 
-list.files('C:/Users/Cabous/OneDrive/Desktop/Fin_Metrics_Essay/FinMetrics-Essay/code/', full.names = T, recursive = T) %>% 
-    .[grepl('.R', .)] %>% as.list() %>% walk(~source(.))
+
 ```
 
 
@@ -607,6 +606,40 @@ dcc.time.var.cor <- aperm(dcc.time.var.cor, c(3, 2, 1))
 dim(dcc.time.var.cor) <- c(nrow(dcc.time.var.cor), ncol(dcc.time.var.cor)^2)
 
 # Rename Output
+renamingdcc <- function(ReturnSeries, DCC.TV.Cor) {
+
+    ncolrtn <- ncol(ReturnSeries)
+    namesrtn <- colnames(ReturnSeries)
+    paste(namesrtn, collapse = "_")
+
+    nam <- c()
+    xx <- mapply(rep, times = ncolrtn:1, x = namesrtn)
+    # Now let's be creative in designing a nested for loop to save the names corresponding to the columns of interest..
+
+    # TIP: draw what you want to achieve on a paper first. Then apply code.
+
+    # See if you can do this on your own first.. Then check vs my solution:
+
+    nam <- c()
+    for (j in 1:(ncolrtn)) {
+        for (i in 1:(ncolrtn)) {
+            nam[(i + (j-1)*(ncolrtn))] <- paste(xx[[j]][1], xx[[i]][1], sep="_")
+        }
+    }
+
+    colnames(DCC.TV.Cor) <- nam
+
+    # So to plot all the time-varying correlations wrt SBK:
+    # First append the date column that has (again) been removed...
+    DCC.TV.Cor <-
+        data.frame( cbind( date = index(ReturnSeries), DCC.TV.Cor)) %>% # Add date column which dropped away...
+        mutate(date = as.Date(date)) %>%  tbl_df()
+
+    DCC.TV.Cor <- DCC.TV.Cor %>% gather(Pairs, Rho, -date)
+
+    DCC.TV.Cor
+
+}
 
 dcc.time.var.cor <- renamingdcc(ReturnSeries = asset_xts_ret, DCC.TV.Cor = dcc.time.var.cor)
 
@@ -710,8 +743,7 @@ renamingdcc <- function(ReturnSeries, DCC.TV.Cor) {
 }
 
 # Let's see if our function works! Excitement!
-Rhot <-
-    renamingdcc(ReturnSeries = asset_xts_ret, DCC.TV.Cor = Rhot)
+Rhot <- renamingdcc(ReturnSeries = asset_xts_ret, DCC.TV.Cor = Rhot)
 
 head(Rhot %>% arrange(date))
 
@@ -771,15 +803,34 @@ print(gg_bitcoin)
 
 
 ```{r}
+print(gg_equity)
+```
+
+
+```{r}
+print(gg_property)
+```
+
+
+```{r}
+print(gg_gold)
+```
+
+
+```{r}
+print(gg_bitcoin)
+```
+
+
+```{r}
 # combine dcc plots
 
-plot_grid(finplot(gg_equity), finplot(gg_property),
+#plot_grid(finplot(gg_equity), finplot(gg_property),
 
-          finplot(gg_gold), finplot(gg_bitcoin),
+#          finplot(gg_gold), finplot(gg_bitcoin),
 
-          labels = list(title = ""),
-          label_size = ggpts(30), align = "h")
-
+#          labels = list(title = ""),
+#          label_size = ggpts(25), align = "h")
 ```
 
 
@@ -790,6 +841,118 @@ Figures 3 illustrates the evolution of correlation processes over time. Some ass
 Generalized Orthogonal GARCH (GO-GARCH) models are used to model and forecast volatility in financial time series data. GO-GARCH models are an extension of the popular GARCH (Generalized Autoregressive Conditional Heteroskedasticity) models and combine features of both ARCH (Autoregressive Conditional Heteroskedasticity) and GARCH models. GO-GARCH models are characterized by using orthogonal (uncorrelated) innovations in the GARCH process, which results in a reduced number of parameters compared to traditional GARCH models [@boswijk2006wake]. This makes the GO-GARCH models computationally more efficient and easier to estimate. Additionally, the use of orthogonal innovations can lead to better forecasting performance, especially in situations where the underlying volatility process is highly non-linear.
 
 Figure 5 depicts the time-varying correlations between the asset classes using a GO-GARCH model.
+
+```{r, include=FALSE}
+# Go-garch
+
+# Now we create a gogarch model specification:
+spec.go <- gogarchspec(multi_univ_garch_spec,
+                       distribution.model = 'mvnorm', # or manig.
+                       ica = 'fastica') # Note: we use the fastICA
+cl <- makePSOCKcluster(10)
+multf <- multifit(multi_univ_garch_spec, asset_xts_ret, cluster = cl)
+
+fit.gogarch <- gogarchfit(spec.go,
+                          data = asset_xts_ret,
+                          solver = 'hybrid',
+                          cluster = cl,
+                          gfun = 'tanh',
+                          maxiter1 = 40000,
+                          epsilon = 1e-08,
+                          rseed = 100)
+
+print(fit.gogarch)
+
+# Extracting time-varying conditional correlations: You know the drill...
+gog.time.var.cor <- rcor(fit.gogarch)
+
+gog.time.var.cor <- aperm(gog.time.var.cor,c(3,2,1))
+
+dim(gog.time.var.cor) <- c(nrow(gog.time.var.cor), ncol(gog.time.var.cor)^2)
+
+# Finally:
+gog.time.var.cor <-
+    renamingdcc(ReturnSeries = asset_xts_ret, DCC.TV.Cor = gog.time.var.cor)
+
+# plot go garch
+
+gg_go_equity <- ggplot(gog.time.var.cor %>% dplyr::filter(grepl("JALSHTR_Index_", Pairs),
+                                         !grepl("_JALSHTR_Index", Pairs))) +
+    geom_line(aes(x = date, y = Rho,
+                 colour = Pairs)) + theme_hc() + ggtitle("Go-GARCH: JALSHTR_Index")
+
+
+print(gg_go_equity)
+
+# prop
+
+gg_go_prop <- ggplot(gog.time.var.cor %>%
+
+                         dplyr::filter(grepl("JSAPYTR_Index_", Pairs),
+
+                        !grepl("_JSAPYTR_Index", Pairs))) +
+
+    geom_line(aes(x = date, y = Rho,
+         colour = Pairs)) + theme_hc() + ggtitle("Go-GARCH: JSAPYTR_Index")
+
+print(gg_go_prop)
+
+# gold
+
+gg_go_gold <- ggplot(gog.time.var.cor %>%
+
+                         dplyr::filter(grepl("Gold_", Pairs),
+
+                                !grepl("_Gold", Pairs))) +
+
+    geom_line(aes(x = date, y = Rho,
+                  colour = Pairs)) + theme_hc() + ggtitle("Go-GARCH: Gold")
+
+print(gg_go_gold)
+
+# bitcoin
+
+gg_go_bitcoin <- ggplot(gog.time.var.cor %>%
+
+                         dplyr::filter(grepl("Bitcoin_", Pairs),
+
+                                !grepl("_Bitcoin", Pairs))) +
+
+    geom_line(aes(x = date, y = Rho,
+                  colour = Pairs)) + theme_hc() + ggtitle("Go-GARCH: Bitcoin")
+```
+
+
+```{r}
+print(gg_go_equity)
+```
+
+
+```{r}
+print(gg_go_prop)
+```
+
+
+```{r}
+print(gg_go_prop)
+
+```
+
+
+```{r}
+print(gg_go_bitcoin)
+```
+
+
+```{r}
+#plot_grid(finplot(gg_go_equity), finplot(gg_go_prop),
+
+#          finplot(gg_go_gold), finplot(gg_go_bitcoin),
+
+#          labels = list(title = ""),
+#          label_size = ggpts(30), align = "h")
+################################################
+```
 
 
 The most noticeable difference between the GO-GARCH correlations and the DCC correlations is the range in which they vary. Similar to @boswijk2006wake I find that the GO-GARCH and DCC correlation patterns are similar, however, from my analyse I do not find that the GO-GARCH model behaves like a smoothed version of the DCC model. Furthermore, the difference between these two models should be interpreted with caution since this property may be favourable to some and not others.
@@ -802,18 +965,161 @@ In the final section of this paper, I use the data on equities, property, gold a
 
 The pie charts below illustrate the optimal weighting as defined by each portfolio. As expected, we see that Bitcoin receives a very small weighting (1.3%) in the global minimum portfolio since it is deemed high risky. 
 
+```{r, include=FALSE}
+# efficiency portfolio
+library(timeSeries)
+library(fPortfolio)
+all.data <- as.timeSeries(100*asset_xts_ret)
 
-Figure 6 is another interesting chart that displays the weights on the different assets, the risk, and the return along the frontier. The black line through the chart indicates the minimum variance portfolio. 
+# equal weight
 
+ewSpec <- portfolioSpec(portfolio = list(weights=rep(1, NCOL(asset_xts_ret))/NCOL(asset_xts_ret) ))
+
+ewportfolio <- feasiblePortfolio(data = all.data,spec = ewSpec, constraints = "LongOnly")
+
+#print(ewportfolio)
+
+minriskSpec <- portfolioSpec()
+
+targetReturn <- getTargetReturn(ewportfolio@portfolio)["mean"]
+
+`setTargetReturn<-`(minriskSpec,targetReturn)
+
+#now we optimise
+
+minRiskPortfolio <- efficientPortfolio(data = all.data, spec = minriskSpec,
+                                       constraints = "LlongOnly")
+
+#print(minRiskPortfolio)
+# tangency portfolio
+
+Tangecy_Portfolio <- tangencyPortfolio(data = all.data, spec = minriskSpec,
+                                       constraints = "LongOnly")
+
+#print(Tangecy_Portfolio)
+
+#######################################
+```
+
+```{r}
+
+weightsPie(ewportfolio, box = FALSE)
+
+```
+
+```{r}
+weightsPie(minRiskPortfolio, box = FALSE)
+
+```
+
+```{r}
+weightsPie(Tangecy_Portfolio, box = FALSE)
+
+
+```
+
+```{r}
+
+portFrontier <- portfolioFrontier(all.data)
+
+fPortfolio::weightsPlot(portFrontier)
+
+```
+
+The figure above is another interesting chart that displays the weights on the different assets, the risk, and the return along the frontier. The black line through the chart indicates the minimum variance portfolio. 
 
 Next, I present the performance summary charts which sums up the information we need in analysing all the portfolios’ performance over time. The charts depict each portfolio’s cumulative return, daily return, and drawdown. Each portfolio is rebalanced every quarter.
+
+```{r, include=FALSE}
+#Portfolio Daily Return Rebalance every Quarters
+ew <- rep(1, NCOL(asset_xts_ret))/NCOL(asset_xts_ret)
+
+Portfolio_Return <- Return.portfolio(asset_xts_ret, weights = ew,
+                                     rebalance_on = 'quarters')
+
+#Portfolio Returns Distribution on Period
+
+chart.Histogram(Portfolio_Return,
+                main = "Portfolio Daily Returns Distributions (2013-2020)",
+                cex.axis = 1.2, cex.lab = 1.5, cex.main = 2,
+                colorset = "#F77171",
+                note.line = mean(Return.portfolio(asset_xts_ret)),
+                note.label = 'Average', note.color = 'black', note.cex = 1.2)
+```
+
+```{r}
+charts.PerformanceSummary(Portfolio_Return,
+                          main = 'Equally Weighted Portfolio Performance')
+
+```
+
+```{r, include=FALSE}
+#min risk weights
+
+minriskweight <- as.numeric(c(0.2557, 0.2060, 0.5257, 0.0126))
+
+#Portfolio Daily Return Rebalance every Quarters
+
+Portfolio_Return_minrisk <- Return.portfolio(asset_xts_ret, weights = minriskweight,
+                                     rebalance_on = 'quarters')
+
+#Portfolio Returns Distribution on Period
+
+chart.Histogram(Portfolio_Return_minrisk,
+                main = "Portfolio Daily Returns Distributions (2013-2020)",
+                cex.axis = 1.2, cex.lab = 1.5, cex.main = 2,
+                colorset = "#F77171",
+                note.line = mean(Return.portfolio(asset_xts_ret)),
+                note.label = 'Average', note.color = 'black', note.cex = 1.2)
+```
+
+```{r}
+charts.PerformanceSummary(Portfolio_Return_minrisk,
+                          main = 'Global Min Variance Portfolio Performance')
+
+```
+
+```{r, include=FALSE}
+#Tangency weights
+
+tangent_weight <- as.numeric(c(0.4906, 0.0000, 0.3534, 0.1560))
+#Portfolio Daily Return Rebalance every Quarters
+
+Portfolio_Return_tangent <- Return.portfolio(asset_xts_ret, weights = tangent_weight,
+                                             rebalance_on = 'quarters')
+
+#Portfolio Returns Distribution on Period
+
+chart.Histogram(Portfolio_Return_tangent,
+                main = "Portfolio Daily Returns Distributions (2013-2020)",
+                cex.axis = 1.2, cex.lab = 1.5, cex.main = 2,
+                colorset = "#F77171",
+                note.line = mean(Return.portfolio(asset_xts_ret)),
+                note.label = 'Average', note.color = 'black', note.cex = 1.2)
+```
+
+```{r}
+charts.PerformanceSummary(Portfolio_Return_tangent,
+                          main = 'Tangency Portfolio Performance')
+
+
+
+```
 
 
 Finally, table 1 displays the target returns and risks associated with each portfolio.
 
+$$
+\begin{array}{|c|c|c|c|c|}
+\hline \text { Portfolio } & \text { Mean Return } & \text { Cov } & \text { CVaR } & \text { VaR }  \\
+\hline \text { Equally Weighted } & { 0.0464 } & {1.1288 } & {2.7860 } & {1.8735 }\\
+\text { Global Minimum Variance } & {0.0149 } & {0.5473 } & {1.2432} & {0.9095 } \\
+\text { Tangency } & {0.0383 } & {0.8425 } & {1.9634 } & {1.3444 } \\
+\hline
+\end{array}
+$$
 
 It is surprising that the expected returns of the equally weighted portfolio are higher than the tangency portfolio. However, from figure we see that as the amount of risk increases the weights assigned to the property index decreases. Thus, it could be that the tangency portfolio deems property stocks to risky relative to its return series, hence assigning it a weight if zero. 
-
 
 Conditional Value at Risk (CVaR) is a risk measure that quantifies the expected loss for a portfolio or investment for a given confidence level. It provides a more complete picture of the risk associated with an investment by focusing on the tail risk and providing information about the potential losses in the worst-case scenarios. It is evident that the equally weighted portfolio has the highest expected loss followed by the tangency portfolio and the global minimum portfolio. By considering both the mean return and the CVaR, it seems that the risk and return trade-off for an equally weighted portfolio is quite high. As such, the tangency portfolio appears to perform the best, even though it mean returns is slightly lower. 
 
