@@ -154,20 +154,6 @@ Tidy_asset_rtn <-
 # Now let's see what changed:
 Tidy_asset_rtn %>% filter(CleanedRet != dlogret)
 
-# March test
-
-return_xts <- asset_classes_ret %>% tbl_xts(., cols_to_xts = "dlogret", spread_by = "Ticker")
-
-return_xts_padded <- na.locf(return_xts, na.rm = F, maxgap = 5)
-
-#return_xts1 <- asset_classes_ret %>% tbl_xts(., cols_to_xts = "scaledret", spread_by = "Ticker")
-
-#return_xts[is.na(return_xts)] <- 0
-
-#return_xts1[is.na(return_xts1)] <- 0
-
-MarchTest(return_xts_padded)
-
 # The MARCH test indicates that all the MV portmanteau tests reject the
 # null of no conditional heteroskedasticity, motivating our use of MVGARCH models.
 
@@ -216,30 +202,6 @@ Weights[is.na(Weights)] <- 0
 porteqw <- rmsfuns::Safe_Return.portfolio(Simple_asset_rtn, weight = Weights,
                                           geometric = FALSE)
 
-# Now, let’s plot the returns, sqd returns and |retuns|:
-
-Plotdata = cbind(porteqw, porteqw^2, abs(porteqw))
-
-colnames(Plotdata) = c("Returns", "Returns_Sqd", "Returns_Abs")
-
-Plotdata <- Plotdata %>%
-
-    xts_tbl() %>%
-
-    gather(ReturnType, Returns, -date)
-
-ggplot(Plotdata) +
-
-    geom_line(aes(x = date, y = Returns, colour = ReturnType, alpha = 0.5)) +
-
-    ggtitle("Return Type Persistence: Asset classes") +
-
-    facet_wrap(~ReturnType, nrow = 3, ncol = 1, scales = "free") +
-
-    guides(alpha = "none", colour = "none") +
-
-    fmxdat::theme_fmx()
-
 # ACF's
 
 forecast::Acf(porteqw, main = "ACF: Equally Weighted Return")
@@ -255,95 +217,9 @@ Box.test(coredata(porteqw^2), type = "Ljung-Box", lag = 12)
 # The test rejects the nulls of no ARCH effects - hence we need to control
 # for the remaining conditional heteroskedasticity in the returns series,
 
-###################################################################
+##################################################################
 
-# Let’s set up the model
-
-# GARCH specifications
-
-uspec <- ugarchspec(variance.model = list(model = "gjrGARCH",
-                                          garchOrder = c(1, 1)),
-                    mean.model = list(armaOrder = c(1,0), include.mean = TRUE),
-                    distribution.model = "sstd")
-
-multi_univ_garch_spec <- multispec(replicate(ncol(return_xts_padded), uspec))
-
-# DCC specifications
-
-spec.dcc = dccspec(multi_univ_garch_spec, dccOrder = c(1, 1),
-                   distribution = "mvnorm",
-                   lag.criterion = c("AIC", "HQ", "SC", "FPE")[1],
-                   model = c("DCC", "aDCC")[1])
-
-# Enable clustering for speed:
-
-cl = makePSOCKcluster(10)
-
-# Fit GARCH
-
-multf = multifit(multi_univ_garch_spec, return_xts_padded, cluster = cl)
-# Fit DCC
-
-fit.dcc = dccfit(spec.dcc, data = return_xts_padded, solver = "solnp",
-                 cluster = cl, fit.control = list(eval.se = FALSE), fit = multf)
-
-# Check Model
-
-RcovList <- rcov(fit.dcc)
-
-covmat = matrix(RcovList, nrow(return_xts_padded),
-                ncol(return_xts_padded) * ncol(return_xts_padded),
-                byrow = TRUE)
-
-mc1 = MCHdiag(return_xts_padded, covmat)
-
-#Check Tsay (2014 on the interpretation of these
-            # Portmanteau tests)....
-
-
-# Now to save the time-varying correlations as specified by the DCC model
-
-dcc.time.var.cor <- rcor(fit.dcc)
-
-print(dcc.time.var.cor[, , 1:3])
-
-# create renaming func
-
-# Renaming DCC code from Tutorial
-
-
-# We will first use the base R function aperm - which
-# transposes any array into a list by changing the dimensions
-
-dcc.time.var.cor <- aperm(dcc.time.var.cor, c(3, 2, 1))
-
-dim(dcc.time.var.cor) <- c(nrow(dcc.time.var.cor), ncol(dcc.time.var.cor)^2)
-
-# And now we can rename our columns the same way as before.
-# Luckily we wrote a function so we can use it again...
-
-dcc.time.var.cor <- renamingdcc(ReturnSeries = return_xts_padded, DCC.TV.Cor = dcc.time.var.cor)
-
-# Note that the figure is very similar to our earlier DCC TV
-# correlations.  So having a GJR univariate model didn't
-# exactly change much...
-
-g1 <- ggplot(dcc.time.var.cor %>%
-
-                 filter(grepl("Gold_", Pairs),
-
-                        !grepl("_Gold", Pairs))) +
-
-    geom_line(aes(x = date, y = Rho, colour = Pairs)) +
-
-    theme_hc() +
-
-    ggtitle("Dynamic Conditional Correlations: Gold")
-
-print(g1)
-
-
-#####################################################
+##################################################################
 
 # alternative return calculation
 
@@ -458,6 +334,7 @@ asset_xts_ret <- asset_xts_ret %>%
 
     tbl_xts()
 
+asset_tbl_ret <- asset_xts_ret %>% xts_tbl()
 
 
 asset_xts_ret <- na.locf(asset_xts_ret, na.rm = F, maxgap = 10)
@@ -756,108 +633,4 @@ print(gg_go_bitcoin)
 
 
 ################################################
-
-#portfolio optimatization
-# set wd
-
-library(quantmod)
-getSymbols(Symbols = "DTB1YR",src="FRED")
-
-
-
-RF = (((returns[,"DTB1YR"]/100)+1)^(1/251)-1)
-
-returns = Return.excess(asset_xts_ret,mean(RF, na.rm=TRUE))
-
-
-shortselling = TRUE
-rebalance = 1
-
-eret = returns*0
-
-eRF = returns[,1]*0;
-covmat = matrix(NA, ncol=NCOL(eret),nrow=NCOL(eret));
-ew = rep(1,NCOL(returns))/NCOL(returns);
-equalWeight_portfolio_ER = returns[,1]*0;
-equalWeight_portfolio_SD = returns[,1]*0;
-equalWeight_portfolio_W = returns*0;
-efficient_portfolio_ER = returns[,1]*0;
-efficient_portfolio_SD = returns[,1]*0;
-efficient_portfolio_W = returns*0;
-globalMin_portfolio_ER = returns[,1]*0;
-globalMin_portfolio_SD = returns[,1]*0;
-globalMin_portfolio_W = returns*0;
-tangency_portfolio_ER = returns[,1]*0;
-tangency_portfolio_SD = returns[,1]*0;
-tangency_portfolio_W = returns*0;
-
-
-for (t in seq(from=501, to=NROW(returns), by=rebalance)){;
-    for (i in 1:NCOL(returns)){;
-        eret[t,i] = mean(returns[1:t,i],na.rm=TRUE) };
-    eRF[t,1] = mean(RF[1:t,1],na.rm=TRUE) }
-
-
-
-for (t in seq(from=501, to=NROW(returns), by=rebalance)){
-
-covmat[1,1] = var.est.z[t,"Equity"]
-covmat[2,2] = var.est.z[t,"prop"]
-covmat[3,3] = var.est.z[t,"golds"]
-covmat[4,4] = var.est.z[t,"Bit"]
-
-covmat[2,1] = covmat[1,2] = cov.est.z[t,"Equity-prop"]
-covmat[3,1] = covmat[1,3] = cov.est.z[t,"Equity-golds"]
-covmat[4,1] = covmat[1,4] = cov.est.z[t,"Equity-Bit"]
-covmat[3,2] = covmat[2,3] = cov.est.z[t,"prop-golds"]
-covmat[4,2] = covmat[2,4] = cov.est.z[t,"prop-Bit"]
-covmat[4,3] = covmat[3,4] = cov.est.z[t,"golds-Bit"]
-
-## The equal weight portfolio expected returns and std.dev.:
-
-equalWeight_portfolio = getPortfolio(er=eret[t,],cov.mat = covmat,
-                                     weights = ew);
-equalWeight_portfolio_ER[t,] = equalWeight_portfolio$er;
-equalWeight_portfolio_SD[t,] = equalWeight_portfolio$sd;
-equalWeight_portfolio_W[t,] = equalWeight_portfolio$weights;
-
-## The target portfolio expected returns and std.dev.:
-target.return = eret[t,"Equity"];
-efficient_portfolio = efficient.portfolio(er=eret[t,],cov.mat = covmat,
-                                          target.return, shorts=paste0(shortselling)); efficient_portfolio_ER[t,] =
-    efficient_portfolio$er;
-efficient_portfolio_SD[t,] = efficient_portfolio$sd;
-efficient_portfolio_W[t,] = efficient_portfolio$weights;
-
-
-## The global minimum variance portfolio expected returns and std.dev.:
-globalMin_portfolio = globalMin.portfolio(er=eret[t,],cov.mat = covmat,
-                                          shorts=paste0(shortselling));
-globalMin_portfolio_ER[t,] = globalMin_portfolio$er;
-globalMin_portfolio_SD[t,] = globalMin_portfolio$sd;
-globalMin_portfolio_W[t,] = globalMin_portfolio$weights;
-## The tangency portfolio expected returns and std.dev.:
-r.free = as.numeric(eRF[t,]);
-tangency_portfolio = tangency.portfolio(er=eret[t,],cov.mat = covmat,
-                                        r.free, shorts=paste0(shortselling));
-tangency_portfolio_ER[t,] = tangency_portfolio$er;
-tangency_portfolio_SD[t,] = tangency_portfolio$sd;
-tangency_portfolio_W[t,] = tangency_portfolio$weights
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
